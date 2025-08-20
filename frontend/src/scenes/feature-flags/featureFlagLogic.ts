@@ -71,6 +71,8 @@ import { teamLogic } from '../teamLogic'
 import { checkFeatureFlagConfirmation } from './featureFlagConfirmationLogic'
 import type { featureFlagLogicType } from './featureFlagLogicType'
 import { featureFlagPermissionsLogic } from './featureFlagPermissionsLogic'
+import { featureFlagReleaseConditionsLogic } from './featureFlagReleaseConditionsLogic'
+import { createScheduleReleaseConditionsLogicKey } from './featureFlagUtils'
 
 export type ScheduleFlagPayload = Pick<FeatureFlagType, 'filters' | 'active'>
 
