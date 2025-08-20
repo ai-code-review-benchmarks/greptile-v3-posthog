@@ -14,9 +14,8 @@ dependencies = [
     "brotli==1.1.0",
     "celery==5.3.4",
     "celery-redbeat==2.1.1",
-    "clickhouse-connect==0.8.17",
-    "clickhouse-driver==0.2.9",
-    "clickhouse-pool==0.5.3",
+    "clickhouse-connect==0.8.18",
+    "clickhouse-pool==0.6.0",
     "conditional-cache==1.2",
     "cryptography==39.0.2",
     "dagster==1.10.18",
@@ -228,10 +227,10 @@ dev = [
 
 [tool.uv]
 required-version = ">=0.7.0"
+override-dependencies = ["clickhouse-driver==0.2.9"]
 
 [tool.uv.sources]
 infi-clickhouse-orm = { git = "https://github.com/PostHog/infi.clickhouse_orm", rev = "9578c79f29635ee2c1d01b7979e89adab8383de2" }
-
 
 [tool.black]
 line-length = 120
