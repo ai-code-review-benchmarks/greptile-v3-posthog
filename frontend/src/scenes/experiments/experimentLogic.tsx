@@ -122,6 +122,7 @@ const NEW_EXPERIMENT: Experiment = {
     exposure_criteria: {
         filterTestAccounts: true,
     },
+    last_refresh: null,
 }
 
 export const DEFAULT_MDE = 30
@@ -493,6 +494,7 @@ export const experimentLogic = kea<experimentLogicType>([
                 | null
             )[]
         ) => ({ results }),
+        updateExperimentLastRefresh: (lastRefresh: string) => ({ lastRefresh }),
         updateDistribution: (featureFlag: FeatureFlagType) => ({ featureFlag }),
     }),
     reducers({
@@ -713,6 +715,15 @@ export const experimentLogic = kea<experimentLogicType>([
             'results',
             {
                 setTabKey: (_, { tabKey }) => tabKey,
+            },
+        ],
+        lastExperimentRefresh: [
+            null as string | null,
+            {
+                loadExperimentSuccess: (_, { experiment }) => {
+                    return experiment.last_refresh
+                },
+                updateExperimentLastRefresh: (_, { lastRefresh }) => lastRefresh,
             },
         ],
         // PRIMARY METRICS
@@ -942,8 +953,15 @@ export const experimentLogic = kea<experimentLogicType>([
             const duration = experiment?.start_date ? dayjs().diff(experiment.start_date, 'second') : null
             experiment && actions.reportExperimentViewed(experiment, duration)
 
-            if (experiment?.start_date) {
-                actions.refreshExperimentResults()
+            /**
+             * if the experiment is running, we refresh the results if they are
+             * 30 minutes or older.
+             */
+            if (experiment.start_date && !experiment.end_date) {
+                const isStale = experiment.last_refresh
+                    ? dayjs().diff(dayjs(experiment.last_refresh), 'seconds') > 1800
+                    : true
+                actions.refreshExperimentResults(isStale)
             }
         },
         launchExperiment: async () => {
@@ -982,9 +1000,16 @@ export const experimentLogic = kea<experimentLogicType>([
             values.experiment && actions.reportExperimentArchived(values.experiment)
         },
         refreshExperimentResults: async ({ forceRefresh }) => {
-            actions.loadPrimaryMetricsResults(forceRefresh)
-            actions.loadSecondaryMetricsResults(forceRefresh)
+            await Promise.all([
+                actions.loadPrimaryMetricsResults(forceRefresh),
+                actions.loadSecondaryMetricsResults(forceRefresh),
+            ])
             actions.loadExposures(forceRefresh)
+
+            // Update last refresh time after metrics complete loading
+            if (forceRefresh) {
+                actions.updateExperimentLastRefresh(dayjs().toISOString())
+            }
         },
         updateExperimentMetrics: async () => {
             actions.updateExperiment({
@@ -1332,6 +1357,13 @@ export const experimentLogic = kea<experimentLogicType>([
                 if (logic) {
                     logic.actions.loadFeatureFlag() // Access the loader through actions
                 }
+            }
+        },
+        updateExperimentLastRefresh: async ({ lastRefresh }) => {
+            if (values.experimentId && values.experimentId !== 'new') {
+                await api.update(`api/projects/@current/experiments/${values.experimentId}`, {
+                    last_refresh: lastRefresh,
+                })
             }
         },
     })),
