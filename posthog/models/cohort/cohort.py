@@ -530,4 +530,5 @@ class CohortPeople(models.Model):
     version = models.IntegerField(blank=True, null=True)
 
     class Meta:
+        managed = False
         indexes = [models.Index(fields=["cohort_id", "person_id"])]
