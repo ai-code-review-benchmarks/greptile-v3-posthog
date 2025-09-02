@@ -168,9 +168,44 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self._assert_funnel_breakdown_result_is_correct(
                 results[0],
+                [
+                    FunnelStepResult(name="sign up", breakdown=["Chrome", "95"], count=1),
+                    FunnelStepResult(
+                        name="play movie",
+                        breakdown=["Chrome", "95"],
+                        count=1,
+                        average_conversion_time=3600.0,
+                        median_conversion_time=3600.0,
+                    ),
+                    FunnelStepResult(
+                        name="buy",
+                        breakdown=["Chrome", "95"],
+                        count=1,
+                        average_conversion_time=7200.0,
+                        median_conversion_time=7200.0,
+                    ),
+                ],
+            )
+
+            self.assertCountEqual(
+                self._get_actor_ids_at_step(filters, 1, ["Chrome", "95"]),
+                [people["person1"].uuid],
+            )
+            self.assertCountEqual(
+                self._get_actor_ids_at_step(filters, 2, ["Chrome", "95"]),
+                [people["person1"].uuid],
+            )
+            self.assertCountEqual(
+                self._get_actor_ids_at_step(filters, 3, ["Chrome", "95"]),
+                [people["person1"].uuid],
+            )
+
+            self._assert_funnel_breakdown_result_is_correct(
+                results[1],
                 [
                     FunnelStepResult(name="sign up", breakdown=["Safari", "14"], count=1),
                     FunnelStepResult(name="play movie", breakdown=["Safari", "14"], count=0),
@@ -185,7 +220,7 @@ def funnel_breakdown_test_factory(
             self.assertCountEqual(self._get_actor_ids_at_step(filters, 2, ["Safari", "14"]), [])
 
             self._assert_funnel_breakdown_result_is_correct(
-                results[1],
+                results[2],
                 [
                     FunnelStepResult(name="sign up", breakdown=["Safari", "15"], count=1),
                     FunnelStepResult(
@@ -210,30 +245,24 @@ def funnel_breakdown_test_factory(
             self._assert_funnel_breakdown_result_is_correct(
                 results[2],
                 [
-                    FunnelStepResult(name="sign up", breakdown=["Chrome", "95"], count=1),
+                    FunnelStepResult(name="sign up", breakdown=["Safari", "15"], count=1),
                     FunnelStepResult(
                         name="play movie",
-                        breakdown=["Chrome", "95"],
-                        count=1,
-                        average_conversion_time=3600.0,
-                        median_conversion_time=3600.0,
-                    ),
-                    FunnelStepResult(
-                        name="buy",
-                        breakdown=["Chrome", "95"],
+                        breakdown=["Safari", "15"],
                         count=1,
                         average_conversion_time=7200.0,
                         median_conversion_time=7200.0,
                     ),
+                    FunnelStepResult(name="buy", breakdown=["Safari", "15"], count=0),
                 ],
             )
             self.assertCountEqual(
-                self._get_actor_ids_at_step(filters, 1, ["Chrome", "95"]),
-                [people["person1"].uuid],
+                self._get_actor_ids_at_step(filters, 1, ["Safari", "15"]),
+                [people["person2"].uuid],
             )
             self.assertCountEqual(
-                self._get_actor_ids_at_step(filters, 2, ["Chrome", "95"]),
-                [people["person1"].uuid],
+                self._get_actor_ids_at_step(filters, 2, ["Safari", "15"]),
+                [people["person2"].uuid],
             )
 
         @also_test_with_materialized_columns(["$browser"])
@@ -296,6 +325,7 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self._assert_funnel_breakdown_result_is_correct(
                 results[0],
@@ -409,6 +439,7 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self._assert_funnel_breakdown_result_is_correct(
                 results[0],
@@ -664,6 +695,7 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self._assert_funnel_breakdown_result_is_correct(
                 results[0],
@@ -762,6 +794,7 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self._assert_funnel_breakdown_result_is_correct(
                 results[0],
@@ -1110,6 +1143,7 @@ def funnel_breakdown_test_factory(
 
             query = cast(FunnelsQuery, filter_to_query(filters))
             results = FunnelsQueryRunner(query=query, team=self.team).calculate().results
+            results = sort_breakdown_funnel_results(results)
 
             self.assertEqual(len(results), 2)
 
