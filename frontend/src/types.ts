@@ -5557,6 +5557,7 @@ export enum ConversationStatus {
 
 export interface Conversation {
     id: string
+    user: UserBasicType
     status: ConversationStatus
     title: string | null
     created_at: string | null
