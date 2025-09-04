@@ -1,43 +1,28 @@
 import { useActions, useValues } from 'kea'
 
-import {
-    ExperimentFunnelsQuery,
-    ExperimentMetric,
-    ExperimentTrendsQuery,
-    NewExperimentQueryResponse,
-} from '~/queries/schema/schema-general'
 import { InsightType } from '~/types'
 
 import { experimentLogic } from '../../experimentLogic'
 import { insertMetricIntoOrderingArray } from '../../utils'
+import { MetricResult } from '../shared/metricsState'
 import { type ExperimentVariantResult, getVariantInterval } from '../shared/utils'
 import { MetricRowGroup } from './MetricRowGroup'
 import { TableHeader } from './TableHeader'
 
 interface MetricsTableProps {
-    metrics: ExperimentMetric[]
-    results: NewExperimentQueryResponse[]
-    errors: any[]
+    metrics: MetricResult[]
     isSecondary: boolean
-    getInsightType: (metric: ExperimentMetric | ExperimentTrendsQuery | ExperimentFunnelsQuery) => InsightType
     showDetailsModal?: boolean
 }
 
-export function MetricsTable({
-    metrics,
-    results,
-    errors,
-    isSecondary,
-    getInsightType,
-    showDetailsModal = true,
-}: MetricsTableProps): JSX.Element {
-    const { experiment, hasMinimumExposureForResults } = useValues(experimentLogic)
+export function MetricsTable({ metrics, isSecondary, showDetailsModal = true }: MetricsTableProps): JSX.Element {
+    const { experiment, hasMinimumExposureForResults, getInsightType } = useValues(experimentLogic)
     const { duplicateMetric, updateExperimentMetrics, setExperiment } = useActions(experimentLogic)
 
     // Calculate shared axisRange across all metrics
     const maxAbsValue = Math.max(
-        ...results.flatMap((result: NewExperimentQueryResponse) => {
-            const variantResults = result?.variant_results || []
+        ...metrics.flatMap((metricResult: MetricResult) => {
+            const variantResults = metricResult.result?.variant_results || []
             return variantResults.flatMap((variant: ExperimentVariantResult) => {
                 const interval = getVariantInterval(variant)
                 return interval ? [Math.abs(interval[0]), Math.abs(interval[1])] : []
@@ -69,37 +54,33 @@ export function MetricsTable({
                 </colgroup>
                 <TableHeader axisRange={axisRange} />
                 <tbody>
-                    {metrics.map((metric, index) => {
-                        const result = results[index]
-                        const error = errors[index]
-
-                        const isLoading = !result && !error && !!experiment.start_date
-
+                    {metrics.map((metricResult, index) => {
                         return (
                             <MetricRowGroup
-                                key={metric.uuid || index}
-                                metric={metric}
-                                result={result}
+                                key={metricResult.uuid}
+                                metric={metricResult.definition}
+                                result={metricResult.result}
                                 experiment={experiment}
-                                metricType={getInsightType(metric)}
+                                metricType={getInsightType(metricResult.definition) as InsightType}
                                 displayOrder={index}
                                 axisRange={axisRange}
                                 isSecondary={isSecondary}
                                 isLastMetric={index === metrics.length - 1}
                                 isAlternatingRow={index % 2 === 1}
                                 onDuplicateMetric={() => {
-                                    if (!metric.uuid || !experiment) {
+                                    const uuid = metricResult.uuid
+                                    if (!uuid || !experiment) {
                                         return
                                     }
 
                                     const newUuid = crypto.randomUUID()
 
-                                    duplicateMetric({ uuid: metric.uuid, isSecondary, newUuid })
+                                    duplicateMetric({ uuid, isSecondary, newUuid })
 
                                     const newOrderingArray = insertMetricIntoOrderingArray(
                                         experiment,
                                         newUuid,
-                                        metric.uuid,
+                                        uuid,
                                         isSecondary
                                     )
                                     setExperiment({
@@ -110,8 +91,8 @@ export function MetricsTable({
 
                                     updateExperimentMetrics()
                                 }}
-                                error={error}
-                                isLoading={isLoading}
+                                error={metricResult.error}
+                                isLoading={metricResult.isLoading}
                                 hasMinimumExposureForResults={hasMinimumExposureForResults}
                                 showDetailsModal={showDetailsModal}
                             />

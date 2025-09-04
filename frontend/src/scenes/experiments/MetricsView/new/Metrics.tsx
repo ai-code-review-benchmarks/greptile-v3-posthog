@@ -5,8 +5,6 @@ import { LemonButton, Tooltip } from '@posthog/lemon-ui'
 
 import { IconAreaChart } from 'lib/lemon-ui/icons'
 
-import { ExperimentMetric } from '~/queries/schema/schema-general'
-
 import { experimentLogic } from '../../experimentLogic'
 import { modalsLogic } from '../../modalsLogic'
 import { MetricsReorderModal } from '../MetricsReorderModal'
@@ -15,16 +13,7 @@ import { MetricsTable } from './MetricsTable'
 import { ResultDetails } from './ResultDetails'
 
 export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element {
-    const {
-        experiment,
-        getInsightType,
-        getOrderedMetrics,
-        primaryMetricsResults,
-        secondaryMetricsResults,
-        secondaryMetricsResultsErrors,
-        primaryMetricsResultsErrors,
-        hasMinimumExposureForResults,
-    } = useValues(experimentLogic)
+    const { experiment, primaryMetrics, secondaryMetrics, hasMinimumExposureForResults } = useValues(experimentLogic)
 
     const { openPrimaryMetricsReorderModal, openSecondaryMetricsReorderModal } = useActions(modalsLogic)
 
@@ -33,36 +22,10 @@ export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element
         return <></>
     }
 
-    const unorderedResults = isSecondary ? secondaryMetricsResults : primaryMetricsResults
-    const unorderedErrors = isSecondary ? secondaryMetricsResultsErrors : primaryMetricsResultsErrors
+    const metrics = isSecondary ? secondaryMetrics : primaryMetrics
 
-    const metrics = getOrderedMetrics(!!isSecondary)
-
-    // Create maps of UUID -> result/error from original arrays
-    const resultsMap = new Map()
-    const errorsMap = new Map()
-
-    // Get original metrics in their original order
-    const originalMetrics = isSecondary ? experiment.metrics_secondary : experiment.metrics
-    const sharedMetrics = (experiment.saved_metrics || [])
-        .filter((sharedMetric) => sharedMetric.metadata.type === (isSecondary ? 'secondary' : 'primary'))
-        .map((sharedMetric) => sharedMetric.query)
-    const allOriginalMetrics = [...originalMetrics, ...sharedMetrics]
-
-    // Map results and errors by UUID
-    allOriginalMetrics.forEach((metric, index) => {
-        const uuid = metric.uuid || metric.query?.uuid
-        if (uuid) {
-            resultsMap.set(uuid, unorderedResults[index])
-            errorsMap.set(uuid, unorderedErrors[index])
-        }
-    })
-
-    // Reorder results and errors to match the ordered metrics
-    const results = metrics.map((metric) => resultsMap.get(metric.uuid))
-    const errors = metrics.map((metric) => errorsMap.get(metric.uuid))
-
-    const showResultDetails = metrics.length === 1 && results[0] && hasMinimumExposureForResults && !isSecondary
+    const showResultDetails =
+        metrics.length === 1 && metrics[0].result !== null && hasMinimumExposureForResults && !isSecondary
 
     return (
         <div className="mb-4 -mt-2">
@@ -117,21 +80,15 @@ export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element
             </div>
             {metrics.length > 0 ? (
                 <>
-                    <MetricsTable
-                        metrics={metrics}
-                        results={results}
-                        errors={errors}
-                        isSecondary={!!isSecondary}
-                        getInsightType={getInsightType}
-                        showDetailsModal={!showResultDetails}
-                    />
+                    <MetricsTable metrics={metrics} isSecondary={!!isSecondary} showDetailsModal={!showResultDetails} />
                     {showResultDetails && (
                         <div className="mt-4">
                             <ResultDetails
-                                metric={metrics[0] as ExperimentMetric}
+                                metric={metrics[0].definition}
                                 result={{
-                                    ...results[0],
-                                    metric: metrics[0] as ExperimentMetric,
+                                    ...metrics[0].result!,
+                                    metric: metrics[0].definition,
+                                    is_cached: metrics[0].result?.is_cached ?? false,
                                 }}
                                 experiment={experiment}
                                 isSecondary={!!isSecondary}

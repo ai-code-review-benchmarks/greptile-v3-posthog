@@ -34,7 +34,7 @@ export const ExperimentLastRefresh = ({
     onClick,
 }: {
     isRefreshing: boolean
-    lastRefresh: string
+    lastRefresh: string | null | undefined
     onClick: () => void
 }): JSX.Element => {
     usePeriodicRerender(15000) // Re-render every 15 seconds for up-to-date last refresh time
@@ -100,13 +100,15 @@ export function Info(): JSX.Element {
         return <></>
     }
 
-    // Get the last refresh timestamp from either legacy or new results format
-    // Check both primary and secondary metrics for the most recent timestamp
-    const lastRefresh =
-        legacyPrimaryMetricsResults?.[0]?.last_refresh ||
-        legacySecondaryMetricsResults?.[0]?.last_refresh ||
-        primaryMetricsResults?.[0]?.last_refresh ||
-        secondaryMetricsResults?.[0]?.last_refresh
+    // Get the oldest refresh timestamp across all metrics
+    const allResults = [
+        ...legacyPrimaryMetricsResults,
+        ...legacySecondaryMetricsResults,
+        ...Array.from(primaryMetricsResults.values()),
+        ...Array.from(secondaryMetricsResults.values()),
+    ]
+    const timestamps = allResults.map((r) => r?.last_refresh).filter(Boolean) as string[]
+    const lastRefresh = timestamps.length > 0 ? timestamps.sort()[0] : null
 
     const status = getExperimentStatus(experiment)
 

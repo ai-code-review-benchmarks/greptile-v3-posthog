@@ -23,7 +23,8 @@ const MetricItem = ({
     metric: ExperimentMetric & { sharedMetricId?: number; isSharedMetric?: boolean }
     order: number
 }): JSX.Element => {
-    const uuid = metric.uuid || (metric as any).query?.uuid
+    // UUID should always be present since we get metrics from MetricState
+    const uuid = metric.uuid!
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: uuid,
     })
@@ -70,7 +71,7 @@ export function MetricsReorderModal({ isSecondary = false }: { isSecondary?: boo
     const isOpen = isSecondary ? isSecondaryMetricsReorderModalOpen : isPrimaryMetricsReorderModalOpen
     const closeModal = isSecondary ? closeSecondaryMetricsReorderModal : closePrimaryMetricsReorderModal
 
-    const { experiment, getOrderedMetrics } = useValues(experimentLogic)
+    const { experiment, primaryMetrics, secondaryMetrics } = useValues(experimentLogic)
     const { updateExperiment } = useActions(experimentLogic)
 
     const [orderedUuids, setOrderedUuids] = useState<string[]>([])
@@ -97,17 +98,15 @@ export function MetricsReorderModal({ isSecondary = false }: { isSecondary?: boo
             return []
         }
 
-        const allMetrics = getOrderedMetrics(isSecondary)
+        const metricsResults = isSecondary ? secondaryMetrics : primaryMetrics
 
-        const metricsMap = new Map()
-        allMetrics.forEach((metric: any) => {
-            const uuid = metric.uuid || metric.query?.uuid
-            if (uuid) {
-                metricsMap.set(uuid, metric)
-            }
-        })
+        // Create a map for quick lookup by UUID
+        const metricsMap = new Map(metricsResults.map((metricResult) => [metricResult.uuid, metricResult.definition]))
 
-        return orderedUuids.map((uuid) => metricsMap.get(uuid)).filter(Boolean)
+        // Return metrics in the order specified by orderedUuids
+        return orderedUuids
+            .map((uuid) => metricsMap.get(uuid))
+            .filter((metric): metric is ExperimentMetric => metric !== undefined)
     })()
 
     const handleDragEnd = ({ active, over }: DragEndEvent): void => {
@@ -170,11 +169,7 @@ export function MetricsReorderModal({ isSecondary = false }: { isSecondary?: boo
                             </div>
                         )}
                         {displayMetrics.map((metric, index) => (
-                            <MetricItem
-                                key={metric.uuid || (metric as any).query?.uuid}
-                                metric={metric}
-                                order={index}
-                            />
+                            <MetricItem key={metric.uuid} metric={metric} order={index} />
                         ))}
                     </SortableContext>
                 </DndContext>

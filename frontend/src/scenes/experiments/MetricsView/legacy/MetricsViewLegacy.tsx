@@ -28,9 +28,6 @@ export function MetricsViewLegacy({ isSecondary }: { isSecondary?: boolean }): J
 
     const results = isSecondary ? legacySecondaryMetricsResults : legacyPrimaryMetricsResults
 
-    const errors = isSecondary ? secondaryMetricsResultsErrors : primaryMetricsResultsErrors
-    const hasSomeResults = results?.some((result) => result?.insight)
-
     let metrics = isSecondary ? experiment.metrics_secondary : experiment.metrics
     const sharedMetrics = experiment.saved_metrics
         .filter((sharedMetric) => sharedMetric.metadata.type === (isSecondary ? 'secondary' : 'primary'))
@@ -44,6 +41,18 @@ export function MetricsViewLegacy({ isSecondary }: { isSecondary?: boolean }): J
     if (sharedMetrics) {
         metrics = [...metrics, ...sharedMetrics]
     }
+
+    // Convert Map-based errors to array for legacy view
+    const errorsMap = isSecondary ? secondaryMetricsResultsErrors : primaryMetricsResultsErrors
+    const errors = metrics.map((metric) => {
+        const uuid =
+            metric.uuid ||
+            ('query' in metric && metric.query && typeof metric.query === 'object' && 'uuid' in metric.query
+                ? (metric.query as any).uuid
+                : undefined)
+        return uuid ? errorsMap.get(uuid) : null
+    })
+    const hasSomeResults = results?.some((result) => result?.insight)
 
     // Calculate the maximum absolute value across ALL metrics
     const maxAbsValue = Math.max(
