@@ -248,6 +248,7 @@ def generate_notebook_content_from_summary(
     session_ids: list[str],
     project_name: str,
     team_id: int,
+    tasks_available: bool = False,
     summary_title: str | None,
 ) -> TipTapNode:
     """Convert summary data to notebook structure."""
@@ -281,7 +282,9 @@ def generate_notebook_content_from_summary(
 
     # Pattern details
     for pattern in patterns:
-        pattern_content = _create_pattern_section(pattern=pattern, total_sessions=total_sessions, team_id=team_id)
+        pattern_content = _create_pattern_section(
+            pattern=pattern, total_sessions=total_sessions, team_id=team_id, tasks_available=tasks_available
+        )
         content.extend(pattern_content)
 
     content.append(
@@ -357,7 +360,7 @@ def _create_summary_table(patterns: list[EnrichedSessionGroupSummaryPattern], to
 
 
 def _create_pattern_section(
-    pattern: EnrichedSessionGroupSummaryPattern, total_sessions: int, team_id: int
+    pattern: EnrichedSessionGroupSummaryPattern, total_sessions: int, team_id: int, tasks_available: bool
 ) -> TipTapContent:
     """Create detailed pattern section content."""
     content = []
@@ -404,6 +407,66 @@ def _create_pattern_section(
     )
     # Convert indicators to bullet list
     content.append(create_bullet_list(pattern.indicators))
+
+    if tasks_available:
+        try:
+            # Action: allow creating a task directly from this pattern in Notebooks (behind feature flag)
+            task_description_lines = [
+                f"Pattern: {pattern.pattern_name}",
+                f"Severity: {(pattern.severity.value if hasattr(pattern.severity, 'value') else pattern.severity).title()}",
+                f"Description: {pattern.pattern_description}",
+            ]
+            # Add a compact list of indicators for quick context
+            if getattr(pattern, "indicators", None):
+                indicators_text = "; ".join(str(x) for x in pattern.indicators[:5])
+                task_description_lines.append(f"Indicators: {indicators_text}")
+
+            # Include a succinct developer-oriented example from the first event
+            try:
+                first_event = next(iter(pattern.events))
+            except Exception:
+                first_event = None
+
+            if first_event is not None:
+                example_lines: list[str] = [
+                    "",
+                    "Example:",
+                    f"  Segment: {getattr(first_event, 'segment_name', 'Unknown')}",
+                    f"  What confirmed: {getattr(getattr(first_event, 'target_event', None), 'description', 'Unknown')}",
+                    f"  Where: {getattr(getattr(first_event, 'target_event', None), 'current_url', 'Unknown')}",
+                    f"  When: {getattr(getattr(first_event, 'target_event', None), 'milliseconds_since_start', 'Unknown')}ms into session",
+                ]
+
+                prev_list = [
+                    getattr(ev, "description", str(ev))
+                    for ev in getattr(first_event, "previous_events_in_segment", [])[:3]
+                ]
+                next_list = [
+                    getattr(ev, "description", str(ev)) for ev in getattr(first_event, "next_events_in_segment", [])[:3]
+                ]
+
+                if prev_list:
+                    example_lines.append(f"  Previous: {'; '.join(prev_list)}")
+                if next_list:
+                    example_lines.append(f"  Next: {'; '.join(next_list)}")
+
+                task_description_lines.extend(example_lines)
+
+            content.append(
+                {
+                    "type": "ph-task-create",
+                    "attrs": {
+                        "title": pattern.pattern_name,
+                        "description": "\n".join(task_description_lines),
+                        "severity": (
+                            pattern.severity.value if hasattr(pattern.severity, "value") else pattern.severity
+                        ).title(),
+                    },
+                }
+            )
+        except Exception:
+            # Don't block notebook rendering
+            pass
 
     # Examples section, collapsed to avoid overwhelming the user
     content.append(create_heading_with_text("Examples", 3, collapsed=True))

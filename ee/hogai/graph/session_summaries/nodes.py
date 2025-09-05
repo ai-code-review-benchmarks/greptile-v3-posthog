@@ -1,3 +1,4 @@
+import json
 import time
 import asyncio
 from typing import Any, cast
@@ -16,6 +17,7 @@ from posthog.schema import (
 )
 
 from posthog.models.notebook.notebook import Notebook
+from posthog.models.team.team import check_is_feature_available_for_team
 from posthog.session_recordings.models.session_recording_playlist import SessionRecordingPlaylist
 from posthog.sync import database_sync_to_async
 from posthog.temporal.ai.session_summary.summarize_session import execute_summarize_session
@@ -272,11 +274,15 @@ class SessionSummarizationNode(AssistantNode):
                     )
                 # Replace the intermediate state with final report
                 summary = data
+                tasks_available = database_sync_to_async(check_is_feature_available_for_team, thread_sensitive=False)(
+                    self._team.id, "TASK_SUMMARIES"
+                )
                 summary_content = generate_notebook_content_from_summary(
                     summary=summary,
                     session_ids=session_ids,
                     project_name=self._team.name,
                     team_id=self._team.id,
+                    tasks_available=tasks_available,
                     summary_title=summary_title,
                 )
                 self._stream_notebook_content(summary_content, state, writer, partial=False)
@@ -384,10 +390,37 @@ class SessionSummarizationNode(AssistantNode):
                 summaries_content = await self._summarize_sessions_as_group(
                     session_ids=session_ids, state=state, writer=writer, notebook=notebook, summary_title=summary_title
                 )
+            # Try to build a structured artifact for the frontend MaxTool callback
+            artifact: dict[str, Any]
+            if isinstance(summaries_content, str):
+                try:
+                    # Group summaries path returns JSON; individual summaries path may return plain text
+                    parsed = json.loads(summaries_content)
+                    if isinstance(parsed, dict):
+                        artifact = parsed
+                    else:
+                        artifact = {"summaries_text": summaries_content}
+                except Exception:
+                    artifact = {"summaries_text": summaries_content}
+            else:
+                # Already a dict-like structure
+                artifact = cast(dict[str, Any], summaries_content)
+
+            # Attach notebook id if available
+            if getattr(state, "notebook_id", None):
+                try:
+                    if isinstance(artifact, dict):
+                        artifact["notebook_id"] = state.notebook_id
+                except Exception:
+                    pass
+
             return PartialAssistantState(
                 messages=[
                     AssistantToolCallMessage(
-                        content=summaries_content,
+                        content=summaries_content
+                        if isinstance(summaries_content, str)
+                        else json.dumps(summaries_content),
+                        ui_payload={"session_summarization": artifact},
                         tool_call_id=state.root_tool_call_id or "unknown",
                         id=str(uuid4()),
                     ),
