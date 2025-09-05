@@ -7,12 +7,13 @@ import { MemberSelect } from 'lib/components/MemberSelect'
 import { useFeatureFlag } from 'lib/hooks/useFeatureFlag'
 import { LemonInput } from 'lib/lemon-ui/LemonInput/LemonInput'
 import { LemonSelect } from 'lib/lemon-ui/LemonSelect'
+import { featureFlagLogic } from 'lib/logic/featureFlagLogic'
 import { cn } from 'lib/utils/css-classes'
 import { INSIGHT_TYPE_OPTIONS } from 'scenes/saved-insights/SavedInsights'
 import { SavedInsightFilters } from 'scenes/saved-insights/savedInsightsLogic'
 
 import { dashboardsModel } from '~/models/dashboardsModel'
-import { SavedInsightsTabs } from '~/types'
+import { InsightType, SavedInsightsTabs } from '~/types'
 
 export function SavedInsightsFilters({
     filters,
@@ -22,9 +23,19 @@ export function SavedInsightsFilters({
     setFilters: (filters: Partial<SavedInsightFilters>) => void
 }): JSX.Element {
     const { nameSortedDashboards } = useValues(dashboardsModel)
+    const { featureFlags } = useValues(featureFlagLogic)
+
     const newSceneLayout = useFeatureFlag('NEW_SCENE_LAYOUT')
+    const showPathsV2 = !!featureFlags[FEATURE_FLAGS.PATHS_V2]
 
     const { tab, createdBy, insightType, dateFrom, dateTo, dashboardId, search } = filters
+
+    const insightTypeOptions = INSIGHT_TYPE_OPTIONS.filter((option) => {
+        if (option.value === InsightType.PATHS_V2 && !showPathsV2) {
+            return false
+        }
+        return true
+    })
 
     return (
         <div className={cn('flex justify-between gap-2 mb-2 items-center flex-wrap', newSceneLayout && 'mb-0')}>
@@ -58,7 +69,7 @@ export function SavedInsightsFilters({
                     <span>Type:</span>
                     <LemonSelect
                         size="small"
-                        options={INSIGHT_TYPE_OPTIONS}
+                        options={insightTypeOptions}
                         value={insightType}
                         onChange={(v?: string): void => setFilters({ insightType: v })}
                         dropdownMatchSelectWidth={false}

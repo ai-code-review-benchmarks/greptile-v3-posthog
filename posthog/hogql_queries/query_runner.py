@@ -36,6 +36,7 @@ from posthog.schema import (
     LifecycleQuery,
     MarketingAnalyticsTableQuery,
     PathsQuery,
+    PathsV2Query,
     PropertyGroupFilter,
     PropertyGroupFilterValue,
     QueryStatus,
@@ -147,6 +148,7 @@ RunnableQueryNode = Union[
     FunnelsQuery,
     RetentionQuery,
     PathsQuery,
+    PathsV2Query,
     StickinessQuery,
     LifecycleQuery,
     ActorsQuery,
@@ -232,6 +234,16 @@ def get_query_runner(
 
         return PathsQueryRunner(
             query=cast(PathsQuery | dict[str, Any], query),
+            team=team,
+            timings=timings,
+            limit_context=limit_context,
+            modifiers=modifiers,
+        )
+    if kind == "PathsV2Query":
+        from .insights.paths_v2.paths_v2_query_runner import PathsV2QueryRunner
+
+        return PathsV2QueryRunner(
+            query=cast(PathsV2Query | dict[str, Any], query),
             team=team,
             timings=timings,
             limit_context=limit_context,

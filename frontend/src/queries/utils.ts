@@ -36,6 +36,7 @@ import {
     Node,
     NodeKind,
     PathsQuery,
+    PathsV2Query,
     PersonsNode,
     QuerySchema,
     QueryStatusResponse,
@@ -270,6 +271,10 @@ export function isPathsQuery(node?: Record<string, any> | null): node is PathsQu
     return node?.kind === NodeKind.PathsQuery
 }
 
+export function isPathsV2Query(node?: Record<string, any> | null): node is PathsV2Query {
+    return node?.kind === NodeKind.PathsV2Query
+}
+
 export function isStickinessQuery(node?: Record<string, any> | null): node is StickinessQuery {
     return node?.kind === NodeKind.StickinessQuery
 }
@@ -328,6 +333,7 @@ export function isInsightQueryNode(node?: Record<string, any> | null): node is I
         isFunnelsQuery(node) ||
         isRetentionQuery(node) ||
         isPathsQuery(node) ||
+        isPathsV2Query(node) ||
         isStickinessQuery(node) ||
         isLifecycleQuery(node)
     )
@@ -523,6 +529,7 @@ export const nodeKindToFilterProperty: Record<InsightNodeKind, InsightFilterProp
     [NodeKind.FunnelsQuery]: 'funnelsFilter',
     [NodeKind.RetentionQuery]: 'retentionFilter',
     [NodeKind.PathsQuery]: 'pathsFilter',
+    [NodeKind.PathsV2Query]: 'pathsV2Filter',
     [NodeKind.StickinessQuery]: 'stickinessFilter',
     [NodeKind.LifecycleQuery]: 'lifecycleFilter',
 }
