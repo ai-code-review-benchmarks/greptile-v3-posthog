@@ -12,12 +12,20 @@ export class ItemCollector {
     loaders: Map<ItemCategory, ItemLoader<TimelineItem>> = new Map()
     renderers: Map<ItemCategory, ItemRenderer<TimelineItem>> = new Map()
 
-    constructor(sessionId: string, timestamp: Dayjs) {
+    constructor(
+        sessionId: string,
+        timestamp: Dayjs,
+        categories: [ItemCategory, ItemRenderer<TimelineItem>, ItemLoader<TimelineItem>][]
+    ) {
         this.sessionId = sessionId
         this.timestamp = timestamp
         this.beforeCursor = this.timestamp
         this.afterCursor = this.timestamp
         this.itemCache = new TimeTree<TimelineItem>()
+        for (const [category, renderer, loader] of categories) {
+            this.loaders.set(category, loader)
+            this.renderers.set(category, renderer)
+        }
     }
 
     addCategory(category: ItemCategory, renderer: ItemRenderer<TimelineItem>, loader: ItemLoader<TimelineItem>): void {
