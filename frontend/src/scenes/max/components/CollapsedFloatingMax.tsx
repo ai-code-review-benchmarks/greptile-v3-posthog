@@ -14,7 +14,6 @@ export function CollapsedFloatingMax({ onExpand, onPositionChange }: CollapsedFl
     return (
         <HedgehogAvatar
             onExpand={onExpand}
-            isExpanded={false}
             onPositionChange={onPositionChange}
             fixedDirection={floatingMaxPosition?.side === 'left' ? 'left' : 'right'}
         />

@@ -5,7 +5,7 @@ import { ConfirmUpgradeModal } from 'lib/components/ConfirmUpgradeModal/ConfirmU
 import { ItemSelectModal } from 'lib/components/FileSystem/ItemSelectModal/ItemSelectModal'
 import { LinkToModal } from 'lib/components/FileSystem/LinkTo/LinkTo'
 import { MoveToModal } from 'lib/components/FileSystem/MoveTo/MoveTo'
-import { HedgehogBuddyWithLogic } from 'lib/components/HedgehogBuddy/HedgehogBuddyWithLogic'
+import { HedgehogMode } from 'lib/components/HedgehogMode/HedgehogMode'
 import { TimeSensitiveAuthenticationModal } from 'lib/components/TimeSensitiveAuthentication/TimeSensitiveAuthentication'
 import { GlobalCustomUnitModal } from 'lib/components/UnitPicker/GlobalCustomUnitModal'
 import { UpgradeModal } from 'lib/components/UpgradeModal/UpgradeModal'
@@ -105,7 +105,7 @@ export function GlobalModals(): JSX.Element {
             <SessionPlayerModal />
             <PreviewingCustomCssModal />
             <TwoFactorSetupModal />
-            <HedgehogBuddyWithLogic />
+            <HedgehogMode />
             <PaymentEntryModal />
             <GlobalCustomUnitModal />
             <MoveToModal />

@@ -8,6 +8,8 @@ import { Tooltip } from '@posthog/lemon-ui'
 import { ProfilePicture } from 'lib/lemon-ui/ProfilePicture'
 import { userLogic } from 'scenes/userLogic'
 
+import { MinimalHedgehogConfig } from '~/types'
+
 import { ToolRegistration } from './max-constants'
 import { useMaxTool } from './useMaxTool'
 import { generateBurstPoints } from './utils'
@@ -51,6 +53,13 @@ export function MaxTool({
         onMaxOpen,
     })
 
+    const forcedHedeghogProfile: MinimalHedgehogConfig = {
+        use_as_profile: true,
+        color: user?.hedgehog_config?.actor_options?.color,
+        skin: user?.hedgehog_config?.actor_options?.skin,
+        accessories: user?.hedgehog_config?.actor_options?.accessories,
+    }
+
     let content: JSX.Element
     if (!definition) {
         content = <>{typeof Children === 'function' ? <Children toolAvailable={false} /> : Children}</>
@@ -92,7 +101,7 @@ export function MaxTool({
                             <polygon points={generateBurstPoints(16, 3 / 16)} fill="var(--primary-3000)" />
                         </svg>
                         <ProfilePicture
-                            user={{ hedgehog_config: { ...user?.hedgehog_config, use_as_profile: true } }}
+                            user={{ hedgehog_config: forcedHedeghogProfile }}
                             size="md"
                             className="bg-bg-light"
                         />
