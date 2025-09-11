@@ -436,6 +436,9 @@ export const featureFlagReleaseConditionsLogic = kea<featureFlagReleaseCondition
         moveConditionSetDown: ({ index }) => {
             swapAffectedUsers(values.affectedUsers, actions, index, index + 1)
         },
+        resetAffectedUsers: () => {
+            actions.setAffectedUsers(0, values.totalUsers ?? undefined)
+        },
     })),
     selectors({
         // Get the appropriate groups based on isSuper
