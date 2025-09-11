@@ -56,6 +56,7 @@ impl KafkaDeduplicatorService {
         // Create checkpoint manager with the store manager
         let checkpoint_config = CheckpointConfig {
             checkpoint_interval: config.checkpoint_interval(),
+            cleanup_interval: config.cleanup_interval(),
             local_checkpoint_dir: config.local_checkpoint_dir.clone(),
             s3_bucket: config.s3_bucket.clone().unwrap_or_default(),
             s3_key_prefix: config.s3_key_prefix.clone(),
