@@ -396,7 +396,7 @@ class DatabricksClient:
         self,
         target_table: str,
         source_table: str,
-        merge_key: collections.abc.Iterable[DatabricksField],
+        merge_key: collections.abc.Iterable[str],
         update_key: collections.abc.Iterable[str],
         fields: collections.abc.Iterable[DatabricksField],
         with_schema_evolution: bool = True,
@@ -416,11 +416,10 @@ class DatabricksClient:
 
         assert merge_key, "Merge key must be defined"
         assert update_key, "Update key must be defined"
-        assert fields, "Fields must be defined"
 
-        merge_condition = " AND ".join([f"target.`{field[0]}` = source.`{field[0]}`" for field in merge_key])
+        merge_condition = " AND ".join([f"target.`{field}` = source.`{field}`" for field in merge_key])
 
-        update_condition = " OR ".join([f"target.`{field[0]}` < source.`{field[0]}`" for field in update_key])
+        update_condition = " OR ".join([f"target.`{field}` < source.`{field}`" for field in update_key])
 
         if with_schema_evolution is True:
             merge_query = f"""
@@ -433,6 +432,7 @@ class DatabricksClient:
                 INSERT *
             """
         else:
+            assert fields, "Fields must be defined"
             # first we need to get the column names from the target table
             target_table_field_names = await self.aget_table_columns(target_table)
 
@@ -565,18 +565,18 @@ def _get_databricks_table_settings(
 
 def _get_databricks_merge_config(
     model: BatchExportModel | BatchExportSchema | None,
-) -> tuple[bool, list[DatabricksField], list[str]]:
+) -> tuple[bool, list[str], list[str]]:
     requires_merge = False
     merge_key = []
     update_key = []
     if isinstance(model, BatchExportModel):
         if model.name == "persons":
             requires_merge = True
-            merge_key = [("team_id", "INTEGER"), ("distinct_id", "STRING")]
+            merge_key = ["team_id", "distinct_id"]
             update_key = ["person_version", "person_distinct_id_version"]
         elif model.name == "sessions":
             requires_merge = True
-            merge_key = [("team_id", "INTEGER"), ("session_id", "STRING")]
+            merge_key = ["team_id", "session_id"]
             update_key = ["end_timestamp"]
     return requires_merge, merge_key, update_key
 
