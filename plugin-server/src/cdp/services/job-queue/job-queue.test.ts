@@ -1,17 +1,22 @@
+import '~/tests/helpers/mocks/date.mock'
+
 import { DateTime } from 'luxon'
 
+import { deleteKeysWithPrefix } from '~/cdp/_tests/redis'
+import { CdpRedis, createCdpRedisPool } from '~/cdp/redis'
 import { defaultConfig } from '~/config/config'
 import { PluginsServerConfig } from '~/types'
 
-import { HOG_FILTERS_EXAMPLES, HOG_INPUTS_EXAMPLES } from '../../_tests/examples'
-import { HOG_EXAMPLES } from '../../_tests/examples'
+import { HOG_EXAMPLES, HOG_FILTERS_EXAMPLES, HOG_INPUTS_EXAMPLES } from '../../_tests/examples'
 import { createHogExecutionGlobals, createHogFunction } from '../../_tests/fixtures'
 import { createInvocation } from '../../utils/invocation-utils'
+import { BASE_REDIS_KEY } from '../monitoring/hog-queue-monitoring'
 import { CyclotronJobQueue, JOB_SCHEDULED_AT_FUTURE_THRESHOLD_MS, getProducerMapping } from './job-queue'
 
 describe('CyclotronJobQueue', () => {
     let config: PluginsServerConfig
     let mockConsumeBatch: jest.Mock
+    let redis: CdpRedis
 
     const exampleHogFunction = createHogFunction({
         name: 'Test hog function',
@@ -20,8 +25,11 @@ describe('CyclotronJobQueue', () => {
         ...HOG_FILTERS_EXAMPLES.no_filters,
     })
 
-    beforeEach(() => {
+    beforeEach(async () => {
         config = { ...defaultConfig }
+        redis = createCdpRedisPool(config)
+        await deleteKeysWithPrefix(redis, BASE_REDIS_KEY)
+
         mockConsumeBatch = jest.fn()
     })
 
