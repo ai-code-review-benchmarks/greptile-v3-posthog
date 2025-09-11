@@ -120,6 +120,14 @@ class DatabricksDestinationTest(BaseDestinationTest):
         ]
         return inserted_records
 
+    def preprocess_records_before_comparison(self, records: list[dict[str, t.Any]]) -> list[dict[str, t.Any]]:
+        """Preprocess the records before comparison (if required).
+
+        For Databricks we use a `databricks_ingested_timestamp` field to track when the records were ingested into the destination.
+        For this timestamp, we use now64(), which is not suitable for comparison, so we exclude it.
+        """
+        return [{k: v for k, v in record.items() if k != "databricks_ingested_timestamp"} for record in records]
+
     async def assert_no_data_in_destination(self, **kwargs) -> None:
         """Assert that no data was written to Databricks.
 

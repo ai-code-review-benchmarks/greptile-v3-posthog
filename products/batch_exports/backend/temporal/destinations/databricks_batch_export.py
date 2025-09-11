@@ -172,6 +172,7 @@ class DatabricksClient:
                 credentials_provider=self.get_credential_provider,
                 # user agent can be used for usage tracking
                 user_agent_entry="PostHog batch exports",
+                _socket_timeout=5 * 60,  # 5 minutes
             )
         except OperationalError as err:
             # TODO: check what kinds of errors we get here
@@ -344,12 +345,36 @@ class DatabricksClient:
             query_kwargs={"input_stream": file},
         )
 
-    async def acopy_into_table_from_volume(self, table_name: str, volume_path: str):
-        """Asynchronously copy data from a Databricks volume into a Databricks table."""
+    # TODO - add tests for this
+    async def acopy_into_table_from_volume(self, table_name: str, volume_path: str, fields: list[DatabricksField]):
+        """Asynchronously copy data from a Databricks volume into a Databricks table.
+
+        Databricks is very strict about the schema of the destination table matching the schema of the Parquet file.
+        Therefore, we need to cast the data to the correct type, otherwise the request will fail.
+        - If the field type is VARIANT, we need to parse the string as JSON
+        - If the field type is BIGINT or INTEGER, we cast the data in the file to that type just in case it is an unsigned integer
+        """
         try:
-            results = await self.execute_async_query(
-                f"COPY INTO `{table_name}` FROM '{volume_path}' FILEFORMAT = PARQUET",
-            )
+            select_fields = []
+            for field in fields:
+                if field[1] == "VARIANT":
+                    select_fields.append(f"PARSE_JSON(`{field[0]}`) as `{field[0]}`")
+                elif field[1] == "BIGINT":
+                    select_fields.append(f"CAST(`{field[0]}` as BIGINT) as `{field[0]}`")
+                elif field[1] == "INTEGER":
+                    select_fields.append(f"CAST(`{field[0]}` as INTEGER) as `{field[0]}`")
+                else:
+                    select_fields.append(f"`{field[0]}`")
+            select_fields = ", ".join(select_fields)
+
+            query = f"""
+                COPY INTO `{table_name}`
+                FROM (
+                    SELECT {select_fields} FROM '{volume_path}'
+                )
+                FILEFORMAT = PARQUET
+                """
+            await self.execute_async_query(query, fetch_results=False)
         except ServerOperationError as err:
             if err.message and "INSUFFICIENT_PERMISSIONS" in err.message:
                 self.external_logger.error("Failed to copy data from volume into table: %s", err.message)
@@ -500,7 +525,10 @@ def _get_databricks_fields_from_record_schema(
             databricks_type = "BINARY"
 
         elif pa.types.is_signed_integer(pa_field.type) or pa.types.is_unsigned_integer(pa_field.type):
-            databricks_type = "INTEGER"
+            if pa.types.is_uint64(pa_field.type) or pa.types.is_int64(pa_field.type):
+                databricks_type = "BIGINT"
+            else:
+                databricks_type = "INTEGER"
 
         elif pa.types.is_floating(pa_field.type):
             databricks_type = "FLOAT"
@@ -550,7 +578,7 @@ def _get_databricks_table_settings(
             ("event", "STRING"),
             ("properties", json_type),
             ("distinct_id", "STRING"),
-            ("team_id", "INTEGER"),
+            ("team_id", "BIGINT"),
             ("timestamp", "TIMESTAMP"),
             ("databricks_ingested_timestamp", "TIMESTAMP"),
         ]
@@ -764,6 +792,7 @@ async def insert_into_databricks_activity_from_stage(inputs: DatabricksInsertInp
                 await databricks_client.acopy_into_table_from_volume(
                     table_name=stage_table_name if stage_table_name else inputs.table_name,
                     volume_path=volume_path,
+                    fields=table_fields,
                 )
 
                 if requires_merge and stage_table_name is not None:
