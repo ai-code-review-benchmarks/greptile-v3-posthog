@@ -10,6 +10,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 use crate::{
+    checkpoint::config::CheckpointConfig,
     checkpoint_manager::CheckpointManager,
     config::Config,
     deduplication_processor::{DeduplicationConfig, DeduplicationProcessor},
@@ -53,8 +54,22 @@ impl KafkaDeduplicatorService {
         let store_manager = Arc::new(StoreManager::new(store_config));
 
         // Create checkpoint manager with the store manager
+        let checkpoint_config = CheckpointConfig {
+            checkpoint_interval: config.checkpoint_interval(),
+            cleanup_interval: config.cleanup_interval(),
+            local_checkpoint_dir: config.local_checkpoint_dir.clone(),
+            s3_bucket: config.s3_bucket.clone().unwrap_or_default(),
+            s3_key_prefix: config.s3_key_prefix.clone(),
+            full_upload_interval: config.full_upload_interval,
+            aws_region: config.aws_region.clone(),
+            max_local_checkpoints: config.max_local_checkpoints,
+            max_concurrent_checkpoints: config.max_concurrent_checkpoints,
+            s3_timeout: config.s3_timeout(),
+        };
+
+        // TODO(eli): inject a CheckpointExporter here!
         let mut checkpoint_manager =
-            CheckpointManager::new(store_manager.clone(), config.flush_interval());
+            CheckpointManager::new(checkpoint_config.clone(), store_manager.clone(), None);
         checkpoint_manager.start();
         info!(
             "Started checkpoint manager with flush interval: {:?}",
