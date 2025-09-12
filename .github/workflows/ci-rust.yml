@@ -87,6 +87,7 @@ jobs:
                     - common-database
                     - common-dns
                     - common-geoip
+                    - common-hypercache
                     - common-metrics
                     - common-kafka
                     - cyclotron-core

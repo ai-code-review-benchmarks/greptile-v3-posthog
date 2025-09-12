@@ -1706,6 +1706,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "common-hypercache"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-s3",
+ "common-compression",
+ "common-metrics",
+ "common-redis",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "common-kafka"
 version = "0.1.0"
 dependencies = [

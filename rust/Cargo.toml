@@ -14,6 +14,7 @@ members = [
     "common/symbol_data",
     "common/types",
     "common-compression",
+    "common/hypercache",
     "feature-flags",
     "hook-api",
     "hook-common",

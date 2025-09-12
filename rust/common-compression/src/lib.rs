@@ -61,6 +61,30 @@ pub fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>, 
     }
 }
 
+/// Decompression function that takes a string and tries to decompress it
+/// Tries to decode the string as base64 first, then gzip decompress, then falls back to the original string
+pub fn decompress_string_data(input: &str) -> Result<String, CompressionError> {
+    // First try to decode as base64 in case the string is base64-encoded compressed data
+    if let Ok(decoded_bytes) = decode_base64(input) {
+        // Try gzip decompression on the decoded bytes
+        if let Ok(gzip_decompressed) = decompress_gzip(&decoded_bytes) {
+            if let Ok(decompressed_str) = String::from_utf8(gzip_decompressed) {
+                return Ok(decompressed_str);
+            }
+            // Continue to next strategy if UTF-8 conversion fails
+        }
+
+        // If gzip failed, try to convert the base64-decoded bytes directly to UTF-8
+        if let Ok(utf8_str) = String::from_utf8(decoded_bytes) {
+            return Ok(utf8_str);
+        }
+        // Continue to next strategy if UTF-8 conversion fails
+    }
+
+    // If base64 decoding failed or didn't result in valid data, return the original string
+    Ok(input.to_string())
+}
+
 /// Decompression function for cyclotron compatibility
 /// Tries gzip decompression first, then falls back to direct UTF-8 conversion
 pub fn decompress_data(input: &[u8]) -> Result<String, CompressionError> {
@@ -165,5 +189,31 @@ mod tests {
         let invalid_data = vec![0xFF, 0xFE, 0xFD, 0xFC];
         let result = decompress_data(&invalid_data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decompress_string_data_plain_string() {
+        let plain_string = r#"{"test": "plain_json"}"#;
+        let result = decompress_string_data(plain_string).unwrap();
+        assert_eq!(result, plain_string);
+    }
+
+    #[test]
+    fn test_decompress_string_data_base64_compressed() {
+        let original = r#"{"test": "base64_gzip_compressed"}"#;
+        let compressed = compress_gzip(original.as_bytes()).unwrap();
+        let base64_compressed = encode_base64(&compressed);
+
+        let result = decompress_string_data(&base64_compressed).unwrap();
+        assert_eq!(result, original);
+    }
+
+    #[test]
+    fn test_decompress_string_data_base64_uncompressed() {
+        let original = r#"{"test": "base64_only"}"#;
+        let base64_encoded = encode_base64(original.as_bytes());
+
+        let result = decompress_string_data(&base64_encoded).unwrap();
+        assert_eq!(result, original);
     }
 }
