@@ -13,7 +13,6 @@ import { urls } from 'scenes/urls'
 import { userLogic } from 'scenes/userLogic'
 
 import {
-    AvailableFeature,
     HogFunctionSubTemplateIdType,
     HogFunctionTemplateType,
     HogFunctionTemplateWithSubTemplateType,
@@ -72,7 +71,7 @@ export const hogFunctionTemplateListLogic = kea<hogFunctionTemplateListLogicType
     ),
     path((id) => ['scenes', 'pipeline', 'destinationsLogic', id]),
     connect(() => ({
-        values: [featureFlagLogic, ['featureFlags'], userLogic, ['user', 'hasAvailableFeature']],
+        values: [featureFlagLogic, ['featureFlags'], userLogic, ['user']],
     })),
     actions({
         setFilters: (filters: Partial<HogFunctionTemplateListFilters>) => ({ filters }),
@@ -179,15 +178,6 @@ export const hogFunctionTemplateListLogic = kea<hogFunctionTemplateListLogicType
                 )
 
                 return [...available, ...comingSoon]
-            },
-        ],
-
-        canEnableHogFunction: [
-            (s) => [s.hasAvailableFeature],
-            (hasAvailableFeature): ((template: HogFunctionTemplateType) => boolean) => {
-                return (template: HogFunctionTemplateType) => {
-                    return template?.free || hasAvailableFeature(AvailableFeature.DATA_PIPELINES)
-                }
             },
         ],
 
