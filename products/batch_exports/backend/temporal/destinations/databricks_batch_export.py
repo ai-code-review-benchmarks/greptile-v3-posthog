@@ -499,6 +499,40 @@ def databricks_default_fields() -> list[BatchExportField]:
     return batch_export_fields
 
 
+def _get_databricks_field_type(pa_type: pa.DataType, is_variant: bool) -> str | None:
+    """Get the Databricks type for a PyArrow field."""
+    if pa.types.is_string(pa_type) or isinstance(pa_type, JsonType):
+        if is_variant:
+            return "VARIANT"
+        else:
+            return "STRING"
+
+    elif pa.types.is_binary(pa_type):
+        return "BINARY"
+
+    elif pa.types.is_signed_integer(pa_type) or pa.types.is_unsigned_integer(pa_type):
+        if pa.types.is_uint64(pa_type) or pa.types.is_int64(pa_type):
+            return "BIGINT"
+        else:
+            return "INTEGER"
+
+    elif pa.types.is_floating(pa_type):
+        if pa.types.is_float64(pa_type):
+            return "DOUBLE"
+        else:
+            return "FLOAT"
+
+    elif pa.types.is_boolean(pa_type):
+        return "BOOLEAN"
+
+    elif pa.types.is_timestamp(pa_type):
+        return "TIMESTAMP"
+
+    elif pa.types.is_list(pa_type):
+        list_type = _get_databricks_field_type(pa_type.value_type, False)
+        return f"ARRAY<{list_type}>"
+
+
 def _get_databricks_fields_from_record_schema(
     record_schema: pa.Schema, known_variant_columns: list[str]
 ) -> list[DatabricksField]:
@@ -514,37 +548,10 @@ def _get_databricks_fields_from_record_schema(
 
     for name in record_schema.names:
         pa_field = record_schema.field(name)
-
-        if pa.types.is_string(pa_field.type) or isinstance(pa_field.type, JsonType):
-            if pa_field.name in known_variant_columns:
-                databricks_type = "VARIANT"
-            else:
-                databricks_type = "STRING"
-
-        elif pa.types.is_binary(pa_field.type):
-            databricks_type = "BINARY"
-
-        elif pa.types.is_signed_integer(pa_field.type) or pa.types.is_unsigned_integer(pa_field.type):
-            if pa.types.is_uint64(pa_field.type) or pa.types.is_int64(pa_field.type):
-                databricks_type = "BIGINT"
-            else:
-                databricks_type = "INTEGER"
-
-        elif pa.types.is_floating(pa_field.type):
-            databricks_type = "FLOAT"
-
-        elif pa.types.is_boolean(pa_field.type):
-            databricks_type = "BOOLEAN"
-
-        elif pa.types.is_timestamp(pa_field.type):
-            databricks_type = "TIMESTAMP"
-
-        elif pa.types.is_list(pa_field.type):
-            databricks_type = "ARRAY"
-
-        else:
+        is_variant = pa_field.name in known_variant_columns
+        databricks_type = _get_databricks_field_type(pa_field.type, is_variant)
+        if databricks_type is None:
             raise TypeError(f"Unsupported type in field '{name}': '{databricks_type}'")
-
         databricks_schema.append((name, databricks_type))
 
     return databricks_schema
