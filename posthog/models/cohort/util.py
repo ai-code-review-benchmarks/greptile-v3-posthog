@@ -23,6 +23,7 @@ from posthog.constants import PropertyOperatorType
 from posthog.models import Action, Filter, Team
 from posthog.models.action.util import format_action_filter
 from posthog.models.cohort.cohort import Cohort, CohortOrEmpty
+from posthog.models.cohort.dependencies import get_cohort_dependents
 from posthog.models.cohort.sql import (
     CALCULATE_COHORT_PEOPLE_SQL,
     GET_COHORT_SIZE_SQL,
@@ -537,6 +538,51 @@ def get_all_dependency_cohorts(
                             queue.append(int(prop.value))
                         except (ValueError, TypeError):
                             continue
+
+        except Cohort.DoesNotExist:
+            seen_cohorts_cache[cohort_id] = ""
+            continue
+
+    return cohorts
+
+
+def get_all_dependent_cohorts(
+    cohort: Cohort,
+    using_database: str = "default",
+    seen_cohorts_cache: Optional[dict[int, CohortOrEmpty]] = None,
+) -> list[Cohort]:
+    """
+    Get all cohorts that reference the given cohort, traversing the full dependent chain.
+    For example: if A depends on B, and B depends on C, this returns [A, B] for cohort C.
+    This is the reverse traversal of get_dependency_cohorts.
+    """
+    if seen_cohorts_cache is None:
+        seen_cohorts_cache = {}
+
+    cohorts = []
+    seen_cohort_ids = {cohort.id}
+    queue = [cohort.id]
+
+    while queue:
+        cohort_id = queue.pop()
+
+        try:
+            if cohort_id in seen_cohorts_cache:
+                current_cohort = seen_cohorts_cache[cohort_id]
+                if not current_cohort:
+                    continue
+            else:
+                current_cohort = Cohort.objects.db_manager(using_database).get(
+                    pk=cohort_id, team__project_id=cohort.team.project_id, deleted=False
+                )
+                seen_cohorts_cache[cohort_id] = current_cohort
+
+            for related_id in get_cohort_dependents(current_cohort):
+                queue.append(related_id)
+
+            if cohort_id not in seen_cohort_ids:
+                cohorts.append(current_cohort)
+                seen_cohort_ids.add(cohort_id)
 
         except Cohort.DoesNotExist:
             seen_cohorts_cache[cohort_id] = ""
