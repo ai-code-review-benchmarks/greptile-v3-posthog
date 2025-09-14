@@ -55,6 +55,7 @@ import TabScroller from './TabScroller'
 import { FixErrorButton } from './components/FixErrorButton'
 import { multitabEditorLogic } from './multitabEditorLogic'
 import { OutputTab, outputPaneLogic } from './outputPaneLogic'
+import { NamedQuery } from './sidebar/NamedQuery'
 import { QueryInfo } from './sidebar/QueryInfo'
 import { QueryVariables } from './sidebar/QueryVariables'
 
@@ -462,6 +463,11 @@ export function OutputPane(): JSX.Element {
                             label: 'Materialization',
                             icon: <IconBolt />,
                         },
+                        {
+                            key: OutputTab.NamedQuery,
+                            label: 'Named Query',
+                            icon: <IconBrackets />,
+                        },
                     ].map((tab) => (
                         <div
                             key={tab.key}
@@ -810,6 +816,15 @@ const Content = ({
             <TabScroller>
                 <div className="px-6 py-4 border-t max-w-1/2">
                     <QueryVariables />
+                </div>
+            </TabScroller>
+        )
+    }
+    if (activeTab === OutputTab.NamedQuery) {
+        return (
+            <TabScroller>
+                <div className="px-6 py-4 border-t">
+                    <NamedQuery />
                 </div>
             </TabScroller>
         )
