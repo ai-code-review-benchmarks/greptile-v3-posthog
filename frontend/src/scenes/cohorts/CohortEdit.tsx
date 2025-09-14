@@ -228,7 +228,7 @@ export function CohortEdit({ id }: CohortLogicProps): JSX.Element {
                         onClick={() => duplicateCohort(false)}
                         disabledReasons={{
                             'Save the cohort first': isNewCohort,
-                            'Cohort must be static to duplicate': !cohort.is_static,
+                            'Cohort must be dynamic to duplicate': cohort.is_static === true,
                             'Cohort is still calculating': cohort.is_calculating ?? false,
                         }}
                         menuItem
@@ -240,7 +240,7 @@ export function CohortEdit({ id }: CohortLogicProps): JSX.Element {
                         onClick={() => duplicateCohort(true)}
                         disabledReasons={{
                             'Save the cohort first': isNewCohort,
-                            'Cohort must be static to duplicate': !cohort.is_static,
+                            'Cohort must be dynamic to duplicate': cohort.is_static === true,
                             'Cohort is still calculating': cohort.is_calculating ?? false,
                         }}
                         menuItem
