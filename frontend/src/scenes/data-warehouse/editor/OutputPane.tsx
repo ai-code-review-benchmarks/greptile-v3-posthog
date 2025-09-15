@@ -3,6 +3,7 @@ import 'react-data-grid/lib/styles.css'
 
 import clsx from 'clsx'
 import { useActions, useValues } from 'kea'
+import { router } from 'kea-router'
 import { useCallback, useMemo, useState } from 'react'
 import DataGrid, { DataGridProps, RenderHeaderCellProps, SortColumn } from 'react-data-grid'
 
@@ -10,6 +11,7 @@ import {
     IconBolt,
     IconBrackets,
     IconCode,
+    IconCode2,
     IconCopy,
     IconDownload,
     IconExpand45,
@@ -55,6 +57,7 @@ import TabScroller from './TabScroller'
 import { FixErrorButton } from './components/FixErrorButton'
 import { multitabEditorLogic } from './multitabEditorLogic'
 import { OutputTab, outputPaneLogic } from './outputPaneLogic'
+import { QueryEndpoint } from './sidebar/QueryEndpoint'
 import { QueryInfo } from './sidebar/QueryInfo'
 import { QueryVariables } from './sidebar/QueryVariables'
 
@@ -462,23 +465,31 @@ export function OutputPane(): JSX.Element {
                             label: 'Materialization',
                             icon: <IconBolt />,
                         },
-                    ].map((tab) => (
-                        <div
-                            key={tab.key}
-                            className={clsx(
-                                'flex-1 flex-row flex items-center bold content-center px-2 pt-[3px] cursor-pointer border-b-[medium]',
-                                {
-                                    'font-semibold !border-brand-yellow': tab.key === activeTab,
-                                    'border-transparent': tab.key !== activeTab,
-                                    'opacity-50 cursor-not-allowed': tab.disabled,
-                                }
-                            )}
-                            onClick={() => !tab.disabled && setActiveTab(tab.key)}
-                        >
-                            <span className="mr-1">{tab.icon}</span>
-                            {tab.label}
-                        </div>
-                    ))}
+                        {
+                            key: OutputTab.QueryEndpoint,
+                            label: 'Query Endpoint',
+                            icon: <IconBrackets />,
+                            flag: FEATURE_FLAGS.EMBEDDED_ANALYTICS,
+                        },
+                    ].map((tab) =>
+                        !tab.flag || featureFlags[tab.flag] ? (
+                            <div
+                                key={tab.key}
+                                className={clsx(
+                                    'flex-1 flex-row flex items-center bold content-center px-2 pt-[3px] cursor-pointer border-b-[medium] whitespace-nowrap',
+                                    {
+                                        'font-semibold !border-brand-yellow': tab.key === activeTab,
+                                        'border-transparent': tab.key !== activeTab,
+                                        'opacity-50 cursor-not-allowed': tab.disabled,
+                                    }
+                                )}
+                                onClick={() => !tab.disabled && setActiveTab(tab.key)}
+                            >
+                                <span className="mr-1">{tab.icon}</span>
+                                {tab.label}
+                            </div>
+                        ) : null
+                    )}
                 </div>
                 <div className="flex gap-2 py-2 px-4 flex-shrink-0">
                     {showLegacyFilters && (
@@ -594,6 +605,18 @@ export function OutputPane(): JSX.Element {
                                 onClick={() => shareTab()}
                             />
                         </Tooltip>
+                    )}
+                    {activeTab === OutputTab.QueryEndpoint && (
+                        <LemonButton
+                            type="primary"
+                            onClick={() => {
+                                // Make API Call to create the Query Endpoint
+                                router.actions.push('/embedded-analytics/query-endpoints')
+                            }}
+                            icon={<IconCode2 />}
+                        >
+                            Create query endpoint
+                        </LemonButton>
                     )}
                 </div>
             </div>
@@ -762,6 +785,8 @@ const Content = ({
     const [sortColumns, setSortColumns] = useState<SortColumn[]>([])
     const { editingView } = useValues(multitabEditorLogic)
 
+    const { featureFlags } = useValues(featureFlagLogic)
+
     const sortedRows = useMemo(() => {
         if (!sortColumns.length) {
             return rows
@@ -810,6 +835,15 @@ const Content = ({
             <TabScroller>
                 <div className="px-6 py-4 border-t max-w-1/2">
                     <QueryVariables />
+                </div>
+            </TabScroller>
+        )
+    }
+    if (featureFlags[FEATURE_FLAGS.EMBEDDED_ANALYTICS] && activeTab === OutputTab.QueryEndpoint) {
+        return (
+            <TabScroller>
+                <div className="px-6 py-4 border-t">
+                    <QueryEndpoint />
                 </div>
             </TabScroller>
         )

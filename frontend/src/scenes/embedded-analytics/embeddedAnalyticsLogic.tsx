@@ -1,4 +1,5 @@
-import { actions, events, kea, key, path, props, reducers, selectors } from 'kea'
+import { actions, kea, key, path, props, reducers, selectors } from 'kea'
+import { actionToUrl, router, urlToAction } from 'kea-router'
 
 import { dayjs } from 'lib/dayjs'
 import {
@@ -11,7 +12,15 @@ import {
 import { NodeKind } from '~/queries/schema/schema-general'
 import { ChartDisplayType, InsightLogicProps, IntervalType } from '~/types'
 
-import { EmbeddedAnalyticsTileId, EmbeddedQueryTile } from './common'
+import {
+    EmbeddedAnalyticsTileId,
+    EmbeddedQueryTile,
+    EmbeddedTab,
+    INITIAL_DATE_FROM,
+    INITIAL_DATE_TO,
+    INITIAL_INTERVAL,
+    INITIAL_REQUEST_NAME_BREAKDOWN_ENABLED,
+} from './common'
 import type { embeddedAnalyticsLogicType } from './embeddedAnalyticsLogicType'
 import {
     createApiCpuSecondsQuery,
@@ -24,11 +33,7 @@ import {
     createLast20QueriesQuery,
 } from './queries'
 
-const INITIAL_DATE_FROM = '-7d' as string
-const INITIAL_DATE_TO = null as string | null
-const INITIAL_INTERVAL = getDefaultInterval(INITIAL_DATE_FROM, INITIAL_DATE_TO)
-
-export const EMBEDDED_ANALYTICS_DATA_COLLECTION_NODE_ID = 'EmbeddedAnalyticsScene'
+export const EMBEDDED_ANALYTICS_DATA_COLLECTION_NODE_ID = 'embedded-analytics'
 
 export interface EmbeddedAnalyticsLogicProps {
     dashboardId?: string | number
@@ -48,6 +53,7 @@ export const embeddedAnalyticsLogic = kea<embeddedAnalyticsLogicType>([
             interval,
         }),
         setRequestNameBreakdownEnabled: (enabled: boolean) => ({ enabled }),
+        setActiveTab: (tab: EmbeddedTab) => ({ tab }),
     }),
 
     reducers({
@@ -99,17 +105,27 @@ export const embeddedAnalyticsLogic = kea<embeddedAnalyticsLogicType>([
             },
         ],
         requestNameBreakdownEnabled: [
-            false,
+            INITIAL_REQUEST_NAME_BREAKDOWN_ENABLED,
             {
                 setRequestNameBreakdownEnabled: (_, { enabled }) => enabled,
+            },
+        ],
+        activeTab: [
+            EmbeddedTab.USAGE_ANALYTICS as EmbeddedTab,
+            {
+                setActiveTab: (_, { tab }) => tab,
             },
         ],
     }),
 
     selectors({
         tiles: [
-            (s) => [s.dateFilter, s.requestNameBreakdownEnabled],
-            (dateFilter, requestNameBreakdownEnabled): EmbeddedQueryTile[] => {
+            (s) => [s.dateFilter, s.requestNameBreakdownEnabled, s.activeTab],
+            (dateFilter, requestNameBreakdownEnabled, activeTab): EmbeddedQueryTile[] => {
+                if (activeTab === EmbeddedTab.QUERY_ENDPOINTS) {
+                    return []
+                }
+
                 const dateFromDayjs = dateStringToDayJs(dateFilter.dateFrom)
                 const dateToDayjs = dateFilter.dateTo ? dateStringToDayJs(dateFilter.dateTo) : null
 
@@ -281,20 +297,6 @@ export const embeddedAnalyticsLogic = kea<embeddedAnalyticsLogicType>([
                                 query: last20QueriesQuery,
                             },
                             display: ChartDisplayType.ActionsTable,
-                            chartSettings: {
-                                xAxis: { column: 'query_start_time' },
-                                yAxis: [
-                                    {
-                                        column: 'query_duration_ms',
-                                        settings: { formatting: { prefix: '', suffix: '' } },
-                                    },
-                                    {
-                                        column: 'created_by',
-                                        settings: { formatting: { prefix: '', suffix: '' } },
-                                    },
-                                ],
-                                seriesBreakdownColumn: null,
-                            },
                             tableSettings: {
                                 columns: last20QueriesColumns,
                                 conditionalFormatting: [],
@@ -321,20 +323,6 @@ export const embeddedAnalyticsLogic = kea<embeddedAnalyticsLogicType>([
                                 query: expensiveQueriesQuery,
                             },
                             display: ChartDisplayType.ActionsTable,
-                            chartSettings: {
-                                xAxis: { column: 'query_start_time' },
-                                yAxis: [
-                                    {
-                                        column: 'read_tb',
-                                        settings: { formatting: { prefix: '', suffix: '' } },
-                                    },
-                                    {
-                                        column: 'cpu_sec',
-                                        settings: { formatting: { prefix: '', suffix: '' } },
-                                    },
-                                ],
-                                seriesBreakdownColumn: null,
-                            },
                             tableSettings: {
                                 columns: expensiveQueriesColumns,
                                 conditionalFormatting: [],
@@ -352,10 +340,75 @@ export const embeddedAnalyticsLogic = kea<embeddedAnalyticsLogicType>([
         ],
     }),
 
-    events(({ actions, values }) => ({
-        afterMount: () => {
-            // Force initial breakdown state setup
-            actions.setRequestNameBreakdownEnabled(values.requestNameBreakdownEnabled)
-        },
-    })),
+    actionToUrl(({ values }) => {
+        const stateToUrl = (): string => {
+            const searchParams = { ...router.values.searchParams }
+            const urlParams = new URLSearchParams(searchParams)
+
+            const {
+                dateFilter: { dateFrom, dateTo, interval },
+                requestNameBreakdownEnabled,
+                activeTab,
+            } = values
+
+            if (dateFrom !== INITIAL_DATE_FROM || dateTo !== INITIAL_DATE_TO || interval !== INITIAL_INTERVAL) {
+                urlParams.set('date_from', dateFrom ?? '')
+                urlParams.set('date_to', dateTo ?? '')
+                urlParams.set('interval', interval ?? '')
+            }
+            if (requestNameBreakdownEnabled !== INITIAL_REQUEST_NAME_BREAKDOWN_ENABLED) {
+                urlParams.set('request_name_breakdown_enabled', requestNameBreakdownEnabled.toString())
+            } else {
+                urlParams.delete('request_name_breakdown_enabled')
+            }
+
+            let basePath = '/embedded-analytics'
+            if (activeTab === EmbeddedTab.QUERY_ENDPOINTS) {
+                basePath = '/embedded-analytics/query-endpoints'
+                urlParams.delete('date_from')
+                urlParams.delete('date_to')
+                urlParams.delete('interval')
+                urlParams.delete('request_name_breakdown_enabled')
+            }
+            return `${basePath}${urlParams.toString() ? '?' + urlParams.toString() : ''}`
+        }
+
+        return {
+            setActiveTab: stateToUrl,
+            setRequestNameBreakdownEnabled: stateToUrl,
+            setDatesAndInterval: stateToUrl,
+            setDates: stateToUrl,
+            setInterval: stateToUrl,
+        }
+    }),
+
+    urlToAction(({ actions, values }) => {
+        const toAction = (
+            { activeTab = EmbeddedTab.USAGE_ANALYTICS }: { activeTab?: EmbeddedTab },
+            { date_from, date_to, interval, request_name_breakdown_enabled }: Record<string, any>
+        ): void => {
+            if (![EmbeddedTab.QUERY_ENDPOINTS, EmbeddedTab.USAGE_ANALYTICS].includes(activeTab)) {
+                return
+            }
+
+            if (
+                (date_from && date_from !== values.dateFilter.dateFrom) ||
+                (date_to && date_to !== values.dateFilter.dateTo) ||
+                (interval && interval !== values.dateFilter.interval)
+            ) {
+                actions.setDatesAndInterval(date_from, date_to, interval)
+            }
+            if (
+                request_name_breakdown_enabled &&
+                request_name_breakdown_enabled !== values.requestNameBreakdownEnabled
+            ) {
+                actions.setRequestNameBreakdownEnabled(request_name_breakdown_enabled)
+            }
+
+            if (activeTab && activeTab !== values.activeTab) {
+                actions.setActiveTab(activeTab)
+            }
+        }
+        return { '/embedded-analytics': toAction, '/embedded-analytics/:activeTab': toAction }
+    }),
 ])

@@ -117,6 +117,7 @@ export enum Scene {
     WebAnalyticsPageReports = 'WebAnalyticsPageReports',
     WebAnalyticsWebVitals = 'WebAnalyticsWebVitals',
     EmbeddedAnalytics = 'EmbeddedAnalytics',
+    EmbeddedAnalyticsQueryEndpoints = 'EmbeddedAnalyticsQueryEndpoints',
     Wizard = 'Wizard',
 }
 
