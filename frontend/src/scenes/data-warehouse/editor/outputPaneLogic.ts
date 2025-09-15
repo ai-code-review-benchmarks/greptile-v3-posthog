@@ -12,6 +12,9 @@ export enum OutputTab {
 
 export const outputPaneLogic = kea<outputPaneLogicType>([
     path(['data-warehouse', 'editor', 'outputPaneLogic']),
+    connect(() => ({
+        values: [featureFlagLogic, ['featureFlags']],
+    })),
     actions({
         setActiveTab: (tab: OutputTab) => ({ tab }),
     }),
