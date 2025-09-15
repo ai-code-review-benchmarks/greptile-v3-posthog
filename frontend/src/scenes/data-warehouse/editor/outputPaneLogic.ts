@@ -7,7 +7,7 @@ export enum OutputTab {
     Visualization = 'visualization',
     Variables = 'variables',
     Materialization = 'materialization',
-    NamedQuery = 'named_query',
+    QueryEndpoint = 'query_endpoint',
 }
 
 export const outputPaneLogic = kea<outputPaneLogicType>([
