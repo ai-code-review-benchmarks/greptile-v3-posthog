@@ -9,7 +9,7 @@ import { TopHeading } from 'lib/components/Cards/InsightCard/TopHeading'
 import { ExportButton } from 'lib/components/ExportButton/ExportButton'
 import { ObjectTags } from 'lib/components/ObjectTags/ObjectTags'
 import { TZLabel } from 'lib/components/TZLabel'
-import { DashboardPrivilegeLevel } from 'lib/constants'
+import { DashboardPrivilegeLevel, FEATURE_FLAGS } from 'lib/constants'
 import { dayjs } from 'lib/dayjs'
 import { LemonButton, LemonButtonWithDropdown } from 'lib/lemon-ui/LemonButton'
 import { LemonDivider } from 'lib/lemon-ui/LemonDivider'
@@ -19,6 +19,7 @@ import { Link } from 'lib/lemon-ui/Link'
 import { Spinner } from 'lib/lemon-ui/Spinner'
 import { Splotch, SplotchColor } from 'lib/lemon-ui/Splotch'
 import { Tooltip } from 'lib/lemon-ui/Tooltip'
+import { featureFlagLogic } from 'lib/logic/featureFlagLogic'
 import { capitalizeFirstLetter } from 'lib/utils'
 import { insightDataLogic } from 'scenes/insights/insightDataLogic'
 import { insightLogic } from 'scenes/insights/insightLogic'
@@ -45,6 +46,7 @@ interface InsightMetaProps
         | 'loading'
         | 'loadingQueued'
         | 'rename'
+        | 'setOverride'
         | 'duplicate'
         | 'dashboardId'
         | 'moveToDashboard'
@@ -74,6 +76,7 @@ export function InsightMeta({
     loadingQueued,
     rename,
     duplicate,
+    setOverride,
     moveToDashboard,
     areDetailsShown,
     setAreDetailsShown,
@@ -86,11 +89,14 @@ export function InsightMeta({
     const { exportContext } = useValues(insightDataLogic(insightProps))
     const { samplingFactor } = useValues(insightVizDataLogic(insightProps))
     const { nameSortedDashboards } = useValues(dashboardsModel)
+    const { featureFlags } = useValues(featureFlagLogic)
 
     const otherDashboards = nameSortedDashboards.filter((d) => !dashboards?.includes(d.id))
 
     // (@zach) Access Control TODO: add access control checks for remove from dashboard
     const editable = insight.effective_privilege_level >= DashboardPrivilegeLevel.CanEdit
+
+    const canAccessTileOverrides = !!featureFlags[FEATURE_FLAGS.DASHBOARD_TILE_OVERRIDES]
 
     const summary = useSummarizeInsight()(insight.query)
     const refreshDisabledReason =
@@ -142,6 +148,11 @@ export function InsightMeta({
                             <LemonButton onClick={rename} fullWidth>
                                 Rename
                             </LemonButton>
+                            {canAccessTileOverrides && (
+                                <LemonButton onClick={setOverride} fullWidth>
+                                    Set override
+                                </LemonButton>
+                            )}
                         </>
                     )}
                     <LemonButton
