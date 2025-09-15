@@ -5,7 +5,7 @@ import { LemonButton, Tooltip } from '@posthog/lemon-ui'
 
 import { IconAreaChart } from 'lib/lemon-ui/icons'
 
-import { ExperimentMetric } from '~/queries/schema/schema-general'
+import type { ExperimentMetric } from '~/queries/schema/schema-general'
 
 import { experimentLogic } from '../../experimentLogic'
 import { modalsLogic } from '../../modalsLogic'
@@ -14,7 +14,7 @@ import { AddPrimaryMetric, AddSecondaryMetric } from '../shared/AddMetric'
 import { MetricsTable } from './MetricsTable'
 import { ResultDetails } from './ResultDetails'
 
-export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element {
+export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element | null {
     const {
         experiment,
         getInsightType,
@@ -30,7 +30,7 @@ export function Metrics({ isSecondary }: { isSecondary?: boolean }): JSX.Element
 
     const variants = experiment?.feature_flag?.filters?.multivariate?.variants
     if (!variants) {
-        return <></>
+        return null
     }
 
     const unorderedResults = isSecondary ? secondaryMetricsResults : primaryMetricsResults
