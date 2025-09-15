@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 
 import { LemonMarkdown } from '../LemonMarkdown'
 import { Link, LinkProps } from '../Link'
+import { IconOpenInNew } from '../icons'
 
 export function LemonTableLink({
     title,
@@ -14,7 +15,10 @@ export function LemonTableLink({
     return (
         <Link subtle {...props}>
             <div className="flex flex-col py-1">
-                <div className="flex flex-row items-center font-semibold text-sm gap-1">{title}</div>
+                <div className="flex flex-row items-center font-semibold text-sm gap-1">
+                    <span>{title}</span>
+                    {props.target === '_blank' && <IconOpenInNew />}
+                </div>
 
                 {description ? (
                     <div className="text-xs text-tertiary mt-1">
